@@ -1,14 +1,18 @@
-from googletrans import Translator
+from deep_translator import GoogleTranslator
+from langdetect import detect
 
-translator = Translator()
+def detect_language(text: str) -> str:
+    try:
+        return detect(text)
+    except Exception:
+        return "unknown"
 
 def translate_to_target_language(text: str, target_language: str) -> str | None:
     try:
-        result = translator.translate(text, dest=target_language)
-        if result.src != target_language:
-            return result.text
-        else:
-            return None
+        detected_lang = detect_language(text)
+        if detected_lang != target_language:
+            return GoogleTranslator(source='auto', target=target_language).translate(text)
+        return None
     except Exception as e:
         print(f"[Translation Error]: {e}")
         return None

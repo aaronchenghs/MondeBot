@@ -4,3 +4,5 @@ OUTPUT_MODE_LABELS = {
 }
 
 COMMANDS_PREFIX: str = '!mb'
+
+GPT_MODEL = "gpt-4.1-mini"

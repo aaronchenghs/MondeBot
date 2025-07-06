@@ -1,3 +1,6 @@
-twitchio
-googletrans==4.0.0-rc1
-python-dotenv
+twitchio~=2.10.0
+python-dotenv~=1.1.0
+openai~=1.93.0
+langdetect~=1.0.9
+deep-translator~=1.11.4
+langcodes~=3.5.0

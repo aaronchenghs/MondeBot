@@ -1,17 +1,21 @@
 import os
+import openai
 from dotenv import load_dotenv
 from twitchio.ext import commands
-
+from langcodes import Language
+from utils.translator import detect_language
 from utils.constants import OUTPUT_MODE_LABELS, COMMANDS_PREFIX
+from utils.suggestions import query_suggestions
 from utils.translator import translate_to_target_language
 
 load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
 TOKEN = os.getenv('TWITCH_OAUTH_TOKEN')
 CHANNEL = os.getenv('TWITCH_CHANNEL')
 
 
 def is_authorized(ctx: commands.Context) -> bool:
-    return ctx.author.is_mod or ctx.author.name.lower() == CHANNEL.lower()
+    return  ctx.author.name.lower() == CHANNEL.lower() # or ctx.author.is_mod
 
 
 class Bot(commands.Bot):
@@ -37,16 +41,39 @@ class Bot(commands.Bot):
         if not self.translation_enabled or message.content.startswith(COMMANDS_PREFIX):
             return
 
+        lang_code = detect_language(message.content)
+
+        if lang_code == self.target_language and self.output_mode == "terminal":
+            print(f'🌐 {message.author.name} (native): {message.content}')
+            return
+
         translated = translate_to_target_language(message.content, self.target_language)
-        if translated:
-            output = f'🌐 {message.author.name}: {translated}'
-            match self.output_mode:
-                case 'chat':
-                    await message.channel.send(output)
-                case 'terminal':
-                    print(output)
-                case _:
-                    print(f"⚠️ Unknown output mode: {self.output_mode}")
+        if not translated:
+            return
+
+        output = f'🌐 {message.author.name}: {translated}'
+        if self.output_mode == 'chat':
+            await message.channel.send(output)
+        else:
+            print(output)
+
+        try:
+            lang_code = detect_language(message.content)
+            readable_lang = Language.get(lang_code).display_name()
+
+            suggestions = query_suggestions(
+                original_text=message.content,
+                language_code=readable_lang
+            )
+
+            if suggestions and self.output_mode == 'terminal':
+                print(f"🤖 Suggested responses for {message.author.name} (in {readable_lang}):")
+                for suggestion in suggestions:
+                    print(f"💬 {suggestion}")
+                print('-' * 40)
+
+        except Exception as e:
+            print(f"⚠️ Error generating suggestions: {e}")
 
     @commands.command(name='lang')
     async def set_target_language(self, ctx: commands.Context):
@@ -99,7 +126,3 @@ class Bot(commands.Bot):
             "• `!mb dest [chat|terminal]` - Set output dest\n"
         )
         await ctx.send(help_text)
-
-
-bot = Bot()
-bot.run()
